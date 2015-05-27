@@ -12,12 +12,12 @@ public:
 
 		/* Load FD Model */
 		std::cout << "loading FaceDetector Model" << std::endl;
-		m_FaceDetector.load("..\\Data\\haarcascade_frontalface_default.xml");
+		m_FaceDetector.load("..//Data//haarcascade_frontalface_default.xml");
 
 		/* Load LBF Model */
-		std::string initShapePath = "..\\Data\\InitialShape_68.pts";
+		std::string initShapePath = "..//Data//InitialShape_68.pts";
 		m_LBFModel.InitFrame(initShapePath);
-		m_LBFModel.LoadModel("..\\Data\\RandomForest_FD_8_4_0_5.txt", "..\\Data\\Ws_FD_8_4_0_5.xml");
+		m_LBFModel.LoadModel("..//Data//RandomForest_FD_8_4_0_5.txt", "..//Data//Ws_FD_8_4_0_5.xml");
 	}
 
 	void CV_PJ_Detect(const cv::Mat& inputImg, cv::Rect& faceBbox, std::vector<cv::Point2d>& landmarkPoints)
@@ -51,7 +51,12 @@ private:
 
 int main()
 {
-	cv::Mat testImg = cv::imread("..\\Data\\image_0030.png");
+	cv::Mat testImg = cv::imread("..//Data//image_0030.png");
+	if(testImg.empty())
+	{
+		std::cout << "image load failed" << "\n";
+		return -1;
+	}
 
 	CV_PJ_Face cFace;
 	cv::Rect detectedFace;

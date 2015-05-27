@@ -16,6 +16,8 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
+#define nullptr 0
+
 //LBF structs
 typedef struct _Params
 {
@@ -88,8 +90,8 @@ typedef struct _Data
 	Bbox gtBbox;
 	Bbox facedetBbox;
 
-	std::vector<std::vector<Shape>> intermediateShapes;
-	std::vector<std::vector<Bbox>> intermediateBboxes;
+	std::vector<std::vector<Shape> > intermediateShapes;
+	std::vector<std::vector<Bbox> > intermediateBboxes;
 	std::vector<Shape> shapeResidual;
 	std::vector<cv::Mat> tf2meanShape;
 	std::vector<cv::Mat> meanShape2tf;

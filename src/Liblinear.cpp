@@ -15,7 +15,7 @@
 template <typename T>
 void Transpose(const T* pInputMatrix, T* pOutputMatrix, int inputRow, int inputCol);
 
-/*LIBLINEAR_API*/ void __stdcall L2RegularL2LossSVRDual(double* pInputMatrix, int inputRow, int inputCol,
+/*LIBLINEAR_API*/ void L2RegularL2LossSVRDual(double* pInputMatrix, int inputRow, int inputCol,
 													double* pTargetMatrix, int targetRow, int targetCol,
 													double* pResult, int resRow, int resCol)
 {
@@ -44,7 +44,7 @@ void Transpose(const T* pInputMatrix, T* pOutputMatrix, int inputRow, int inputC
 	prob12.x = new feature_node*[inputRow];
 	for (int row = 0; row < inputRow; row++)
 	{
-		std::vector<std::pair<int, double>> inputRowArray;	// (index, value)
+		std::vector<std::pair<int, double> > inputRowArray;	// (index, value)
 		for (int col = 0; col < inputCol; col++)
 		{
 			int val = pInputMatrix[row * inputCol + col];

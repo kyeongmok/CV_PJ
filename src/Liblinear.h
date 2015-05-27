@@ -11,7 +11,7 @@
 #endif
 
 
-/*LIBLINEAR_API */void __stdcall L2RegularL2LossSVRDual(double* pInputMatrix, int inputRow, int inputCol,
+/*LIBLINEAR_API */void L2RegularL2LossSVRDual(double* pInputMatrix, int inputRow, int inputCol,
 													double* pTargetMatrix, int targetRow, int targetCol,
 													double* pResult, int resRow, int resCol);
 
