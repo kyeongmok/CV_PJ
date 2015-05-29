@@ -49,9 +49,15 @@ private:
 	cv::CascadeClassifier m_FaceDetector;
 };
 
-int main()
+int main(int argc, char **argv)
 {
-	cv::Mat testImg = cv::imread("..//Data//image_0030.png");
+  cv::Mat testImg;
+	if (argc > 1) {
+    testImg = cv::imread(argv[1]);
+  } else {
+  	testImg = cv::imread("..//Data//image_0030.png");
+  }
+
 	if(testImg.empty())
 	{
 		std::cout << "image load failed" << "\n";
