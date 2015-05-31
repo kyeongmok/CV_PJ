@@ -26,7 +26,7 @@ public:
 		std::string initShapePath = m_DataDirPath + "//InitialShape_68.pts";
 
 		m_LBFModel.InitFrame(initShapePath);
-		m_LBFModel.LoadModel(m_DataDirPath + "//RandomForest_FD_8_4_0_5.txt", "//Ws_FD_8_4_0_5.xml");
+		m_LBFModel.LoadModel(m_DataDirPath + "//RandomForest_FD_8_4_0_5.txt", m_DataDirPath + "//Ws_FD_8_4_0_5.xml");
 	}
 
 	void CV_PJ_Detect(const cv::Mat& inputImg, cv::Rect& faceBbox, std::vector<cv::Point2d>& landmarkPoints, std::vector<cv::Point2d>& landmarkRegularized)
@@ -217,6 +217,10 @@ int main(int argc, char **argv)
 		fileDirPath = "..//Data";
 		fileName = "image_0030.png";
   }
+// 	dataDirPath = "..//..//Data";
+// 	fileDirPath = "..//..//Data";
+// 	fileName = "image_0030.png";
+
 	testImg = cv::imread(fileDirPath + "//" + fileName);
 
 	if(testImg.empty())

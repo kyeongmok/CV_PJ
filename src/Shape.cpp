@@ -278,6 +278,8 @@ Shape Shape::RegularizeShape(Bbox refBbox)
 		tmpPoint.y /= (maxPoint - minPoint).y;
 		dstShape.data()[i] = tmpPoint;
 	}
+
+	return dstShape;
 }
 
 Shape Shape::ScaleShape(LBF_DATA scale)
