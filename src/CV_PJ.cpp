@@ -1,5 +1,6 @@
 #include <fstream>
 
+#include "Liblinear.h"
 #include "LBF.h"
 #include "Shape.h"
 #include "opencv2/objdetect/objdetect.hpp"
@@ -149,7 +150,7 @@ public:
 		pTargetMatrix = new double[numSamples * targetNumFeatures];
 		pRegressionResult = new double[inputNumFeatures * targetNumFeatures];
 
-		for (int i = 0; i < imgPathList.size(); i++)
+		for (int i = 0; i < numSamples; i++)
 		{
 			/* parsing to get the score vector */
 			std::string curImgPath = imgPathList[i];			
@@ -170,10 +171,14 @@ public:
 			
 			for (int j = 0; j < inputNumFeatures / 2; j++)
 			{
-
+				pInputMatrix[i * inputNumFeatures + 2 * j] = lmarksRegularized[j].x;
+				pInputMatrix[i * inputNumFeatures + 2 * j + 1] = lmarksRegularized[j].y;
 			}
-			pInputMatrix[i * inputNumFeatures];
+			pRegressionResult[i * targetNumFeatures] = curScore;
 		}
+
+		L2RegularL2LossSVRDual(pInputMatrix, numSamples, inputNumFeatures, pTargetMatrix, numSamples, targetNumFeatures, pRegressionResult, inputNumFeatures, targetNumFeatures);		
+
 
 		delete[] pInputMatrix;
 		delete[] pTargetMatrix;
@@ -202,15 +207,17 @@ private:
 int main(int argc, char **argv)
 {
   cv::Mat testImg;
-  std::string dataDirPath, fileName;
+  std::string dataDirPath, fileDirPath, fileName;
 	if (argc > 1) {
 		dataDirPath = argv[1];
-		fileName = argv[2];
+		fileDirPath = argv[2];
+		fileName = argv[3];
   } else {
 		dataDirPath = "..//Data";
+		fileDirPath = "..//Data";
 		fileName = "image_0030.png";
   }
-	testImg = cv::imread(dataDirPath + "//" + fileName);
+	testImg = cv::imread(fileDirPath + "//" + fileName);
 
 	if(testImg.empty())
 	{
@@ -232,7 +239,7 @@ int main(int argc, char **argv)
 		cv::circle(testImg, detectedLandmarks[i], 2, cv::Scalar(0, 0, 255), -1);
     //cv::putText(testImg, std::to_string(i), detectedLandmarks[i], 1, 1, cv::Scalar(0,0,255));
 	}
-	std::string outputPath = dataDirPath + "//" + fileName;
+	std::string outputPath = fileDirPath + "//" + fileName;
 	cv::imwrite(outputPath, testImg);
 	cv::waitKey();
 
