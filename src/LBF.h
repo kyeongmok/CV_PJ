@@ -48,7 +48,7 @@ public:
 	void LoadModel(std::string rfFilePath, std::string wsFilePath);
 	void Test();	//for test multiple testsets at a time
 	void Prediction(const cv::Mat& srcImg, const Bbox srcBbox, Shape& predShape);
-	
+
 private:
 	Params m_Params;	//constructor sets default parameters
 	std::vector<Data> m_vData;

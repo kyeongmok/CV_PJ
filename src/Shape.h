@@ -43,6 +43,7 @@ public:
 
 	//Shape handling functions
 	Bbox GetBbox(int imgRow, int imgCol) const;
+	void GetRegularizedShape();
 	void GetMinMaxPoint(LBF_POINT& minPoint, LBF_POINT& maxPoint) const;
 	LBF_POINT GetMeanPoint();
 	LBF_POINT GetSquareMeanPoint();
