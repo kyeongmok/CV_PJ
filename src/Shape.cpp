@@ -258,6 +258,28 @@ void Shape::DrawShape(cv::Mat& srcImg, cv::Scalar color)
 	return;
 }
 
+Shape Shape::RegularizeShape(Bbox refBbox)
+{
+	Shape dstShape;
+	
+	if (m_Shape.size() < 1)
+		return dstShape;
+
+	dstShape.resize(m_Shape.size());
+
+	LBF_POINT minPoint, maxPoint;
+	minPoint = LBF_POINT(refBbox.x, refBbox.y);
+	maxPoint = LBF_POINT(refBbox.x + refBbox.width, refBbox.y + refBbox.height);
+	for (int i = 0; i < m_Shape.size(); i++)
+	{
+		LBF_POINT tmpPoint = m_Shape[i];
+		tmpPoint -= minPoint;
+		tmpPoint.x /= (maxPoint - minPoint).x;
+		tmpPoint.y /= (maxPoint - minPoint).y;
+		dstShape.data()[i] = tmpPoint;
+	}
+}
+
 Shape Shape::ScaleShape(LBF_DATA scale)
 {
 	Shape dstShape;

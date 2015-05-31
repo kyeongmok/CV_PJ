@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "LBF.h"
 #include "Shape.h"
 #include "opencv2/objdetect/objdetect.hpp"
@@ -6,25 +8,27 @@
 class CV_PJ_Face
 {
 public:
+	CV_PJ_Face(std::string _dataDirPath)
+	{
+		m_DataDirPath = _dataDirPath;
+	}
+
 	void CV_PJ_LoadModel()
 	{
 		m_LBFModel.SetLBFParams(8, 4, 0, 5, 0.4);
 
 		/* Load FD Model */
-		std::cout << "loading FaceDetector Model" << std::endl;
-		//m_FaceDetector.load("..//Data//haarcascade_frontalface_default.xml");
-		m_FaceDetector.load("..//..//Data//haarcascade_frontalface_default.xml");
+		//std::cout << "loading FaceDetector Model" << std::endl;
+		m_FaceDetector.load(m_DataDirPath + "//haarcascade_frontalface_default.xml");
 
 		/* Load LBF Model */
-		//std::string initShapePath = "..//Data//InitialShape_68.pts";
-		std::string initShapePath = "..//..//Data//InitialShape_68.pts";
+		std::string initShapePath = m_DataDirPath + "//InitialShape_68.pts";
 
 		m_LBFModel.InitFrame(initShapePath);
-		//m_LBFModel.LoadModel("..//Data//RandomForest_FD_8_4_0_5.txt", "..//Data//Ws_FD_8_4_0_5.xml");
-		m_LBFModel.LoadModel("..//..//Data//RandomForest_FD_8_4_0_5.txt", "..//..//Data//Ws_FD_8_4_0_5.xml");
+		m_LBFModel.LoadModel(m_DataDirPath + "//RandomForest_FD_8_4_0_5.txt", "//Ws_FD_8_4_0_5.xml");
 	}
 
-	void CV_PJ_Detect(const cv::Mat& inputImg, cv::Rect& faceBbox, std::vector<cv::Point2d>& landmarkPoints)
+	void CV_PJ_Detect(const cv::Mat& inputImg, cv::Rect& faceBbox, std::vector<cv::Point2d>& landmarkPoints, std::vector<cv::Point2d>& landmarkRegularized)
 	{
 		//preprocessing
 		cv::Mat curGrayFrame = inputImg.clone();
@@ -46,6 +50,7 @@ public:
 		Shape predShape;
 		m_LBFModel.Prediction(curGrayFrame, vFace[0], predShape);
 		landmarkPoints = predShape.data();
+		landmarkRegularized = predShape.RegularizeShape(vFace[0]).data();
 	}
 
 	float CV_PJ_Scoring(std::vector<cv::Point2d> facePts) {
@@ -83,7 +88,7 @@ public:
     return avg;
   }
 
-  float CV_PJ_Scoring2(std::vector<cv::Point2d> facePts) {
+	float CV_PJ_Scoring2(std::vector<cv::Point2d> facePts) {
     cv::Point2d lipCenter = getCenterPoint(facePts[62], facePts[66]);
     cv::Point2d eyeCenter = getCenterPoint(getCenterPoint(facePts[36], facePts[39]), getCenterPoint(facePts[42], facePts[45]));
     cv::Point2d centerOfEyeBrow = getCenterPoint(facePts[21], facePts[22]);
@@ -110,17 +115,85 @@ public:
     return score;
   }
 
+	void TrainScoreModel()
+	{
+		/* train set load */
+		std::string imgPathListFile = m_DataDirPath + "//scoreDataset//Path_Trainset.txt";
+		std::vector<std::string> imgPathList;
+		std::ifstream inFile;
+		inFile.open(imgPathListFile.c_str());
+		if (inFile.is_open())
+		{
+			while (!inFile.eof())
+			{
+				std::string tmpStr;
+				std::getline(inFile, tmpStr);
+				if (tmpStr != "")
+					imgPathList.push_back(tmpStr);
+			}
+			inFile.close();
+		}
+		else
+		{
+			//std::cout << "fail : load image path list file" << std::endl;
+			return;
+		}
+
+		/* get train matrix */
+		int numSamples, inputNumFeatures, targetNumFeatures;
+		numSamples = imgPathList.size();
+		inputNumFeatures = 68 * 2;	// # of lmarks(x and y coord)
+		targetNumFeatures = 1;	// # of output score
+		double *pInputMatrix, *pTargetMatrix, *pRegressionResult;
+		pInputMatrix = new double[numSamples * inputNumFeatures];
+		pTargetMatrix = new double[numSamples * targetNumFeatures];
+		pRegressionResult = new double[inputNumFeatures * targetNumFeatures];
+
+		for (int i = 0; i < imgPathList.size(); i++)
+		{
+			/* parsing to get the score vector */
+			std::string curImgPath = imgPathList[i];			
+			std::string scoreStr = curImgPath.substr(0, curImgPath.find("_") - 1);
+			double curScore = std::stod(scoreStr);
+			
+			/* face alignment */
+			cv::Mat curGrayImg = cv::imread(imgPathList[i].c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+			cv::Rect detectedFace;
+			std::vector<cv::Point2d> lmarks, lmarksRegularized;
+			CV_PJ_Detect(curGrayImg, detectedFace, lmarks, lmarksRegularized);
+
+			if (lmarksRegularized.size() != inputNumFeatures / 2)
+			{
+				std::cerr << "num landmarks error\n";
+				return;
+			}
+			
+			for (int j = 0; j < inputNumFeatures / 2; j++)
+			{
+
+			}
+			pInputMatrix[i * inputNumFeatures];
+		}
+
+		delete[] pInputMatrix;
+		delete[] pTargetMatrix;
+		delete[] pRegressionResult;
+	}
+
+	void PredictScore();
+
 private:
 	LBF m_LBFModel;
 	cv::CascadeClassifier m_FaceDetector;
+	std::string m_DataDirPath;
 
-  cv::Point2d getCenterPoint(cv::Point2d pt1, cv::Point2d pt2) 
+	cv::Point2d getCenterPoint(cv::Point2d pt1, cv::Point2d pt2) 
   {
     return cv::Point2d((pt1.x + pt2.x) / 2.0f, (pt1.y + pt2.y) / 2.0f);
   }
 
-  // 10점 만점.
-  double getScoreOfRatio(double ratio, double targetRatio = 1.618f)
+	// 10점 만점.
+	double getScoreOfRatio(double ratio, double targetRatio = 1.618f)
   {
     return 10 - (std::abs(ratio - targetRatio) / targetRatio) * 10;
   }
@@ -129,11 +202,15 @@ private:
 int main(int argc, char **argv)
 {
   cv::Mat testImg;
+  std::string dataDirPath, fileName;
 	if (argc > 1) {
-    testImg = cv::imread(argv[1]);
+		dataDirPath = argv[1];
+		fileName = argv[2];
   } else {
-  	testImg = cv::imread("..//Data//image_0030.png");
+		dataDirPath = "..//Data";
+		fileName = "image_0030.png";
   }
+	testImg = cv::imread(dataDirPath + "//" + fileName);
 
 	if(testImg.empty())
 	{
@@ -141,11 +218,11 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	CV_PJ_Face cFace;
+	CV_PJ_Face cFace(dataDirPath);
 	cv::Rect detectedFace;
-	std::vector<cv::Point2d> detectedLandmarks;
+	std::vector<cv::Point2d> detectedLandmarks, detectedRegularized;
 	cFace.CV_PJ_LoadModel();
-	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks);
+	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized);
 	double score = cFace.CV_PJ_Scoring(detectedLandmarks); 
 	double score2 = cFace.CV_PJ_Scoring2(detectedLandmarks); 
   std::cout << "face score = " << score << "\n";
@@ -155,7 +232,8 @@ int main(int argc, char **argv)
 		cv::circle(testImg, detectedLandmarks[i], 2, cv::Scalar(0, 0, 255), -1);
     //cv::putText(testImg, std::to_string(i), detectedLandmarks[i], 1, 1, cv::Scalar(0,0,255));
 	}
-	cv::imshow("resImg", testImg);
+	std::string outputPath = dataDirPath + "//" + fileName;
+	cv::imwrite(outputPath, testImg);
 	cv::waitKey();
 
 	return 0;

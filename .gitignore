@@ -32,4 +32,5 @@ Thumbs.db
 .DS_Store
 
 # CS_PJ_Data
-Data/lfpw/*
+Data/lfpw*
+Data/scoreDataset*
