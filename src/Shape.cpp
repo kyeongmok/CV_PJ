@@ -258,7 +258,7 @@ void Shape::DrawShape(cv::Mat& srcImg, cv::Scalar color)
 	return;
 }
 
-Shape Shape::RegularizeShape(Bbox refBbox)
+Shape Shape::RegularizeShape(Bbox refBbox, float scale)
 {
 	Shape dstShape;
 	
@@ -276,7 +276,7 @@ Shape Shape::RegularizeShape(Bbox refBbox)
 		tmpPoint -= minPoint;
 		tmpPoint.x /= (maxPoint - minPoint).x;
 		tmpPoint.y /= (maxPoint - minPoint).y;
-		dstShape.data()[i] = tmpPoint;
+		dstShape.data()[i] = tmpPoint * 1000;
 	}
 
 	return dstShape;

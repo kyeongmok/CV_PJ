@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iomanip>
 
 #include "Liblinear.h"
 #include "LBF.h"
@@ -29,7 +30,7 @@ public:
 		m_LBFModel.LoadModel(m_DataDirPath + "//RandomForest_FD_8_4_0_5.txt", m_DataDirPath + "//Ws_FD_8_4_0_5.xml");
 	}
 
-	void CV_PJ_Detect(const cv::Mat& inputImg, cv::Rect& faceBbox, std::vector<cv::Point2d>& landmarkPoints, std::vector<cv::Point2d>& landmarkRegularized)
+	void CV_PJ_Detect(const cv::Mat& inputImg, cv::Rect& faceBbox, std::vector<cv::Point2d>& landmarkPoints, std::vector<cv::Point2d>& landmarkRegularized, float regularizeScale)
 	{
 		//preprocessing
 		cv::Mat curGrayFrame = inputImg.clone();
@@ -51,7 +52,7 @@ public:
 		Shape predShape;
 		m_LBFModel.Prediction(curGrayFrame, vFace[0], predShape);
 		landmarkPoints = predShape.data();
-		landmarkRegularized = predShape.RegularizeShape(vFace[0]).data();
+		landmarkRegularized = predShape.RegularizeShape(vFace[0], regularizeScale).data();
 	}
 
 	float CV_PJ_Scoring(std::vector<cv::Point2d> facePts) {
@@ -161,7 +162,7 @@ public:
 			cv::Mat curGrayImg = cv::imread(imgPathList[i].c_str(), CV_LOAD_IMAGE_GRAYSCALE);
 			cv::Rect detectedFace;
 			std::vector<cv::Point2d> lmarks, lmarksRegularized;
-			CV_PJ_Detect(curGrayImg, detectedFace, lmarks, lmarksRegularized);
+			CV_PJ_Detect(curGrayImg, detectedFace, lmarks, lmarksRegularized, 1.0);
 
 			if (lmarksRegularized.size() != inputNumFeatures / 2)
 			{
@@ -177,9 +178,10 @@ public:
 			pRegressionResult[i * targetNumFeatures] = curScore;
 		}
 
-		L2RegularL2LossSVRDual(pInputMatrix, numSamples, inputNumFeatures, pTargetMatrix, numSamples, targetNumFeatures, pRegressionResult, inputNumFeatures, targetNumFeatures);		
+		L2RegularL2LossSVRDual(pInputMatrix, numSamples, inputNumFeatures, pTargetMatrix, numSamples, targetNumFeatures, pRegressionResult, inputNumFeatures, targetNumFeatures);
 
-
+		SaveScoreModel();
+		
 		delete[] pInputMatrix;
 		delete[] pTargetMatrix;
 		delete[] pRegressionResult;
@@ -192,6 +194,13 @@ private:
 	cv::CascadeClassifier m_FaceDetector;
 	std::string m_DataDirPath;
 
+	void SaveScoreModel()
+	{
+		std::ofstream outStream;
+		outStream.open(m_DataDirPath + "ScoreModel.txt");
+		outStream << std::setprecision(std::numeric_limits<LBF_DATA>::max_digits10 - 1);
+
+	}
 	cv::Point2d getCenterPoint(cv::Point2d pt1, cv::Point2d pt2) 
   {
     return cv::Point2d((pt1.x + pt2.x) / 2.0f, (pt1.y + pt2.y) / 2.0f);
@@ -233,7 +242,7 @@ int main(int argc, char **argv)
 	cv::Rect detectedFace;
 	std::vector<cv::Point2d> detectedLandmarks, detectedRegularized;
 	cFace.CV_PJ_LoadModel();
-	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized);
+	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized, 1000);
 	double score = cFace.CV_PJ_Scoring(detectedLandmarks); 
 	double score2 = cFace.CV_PJ_Scoring2(detectedLandmarks); 
   std::cout << "face score = " << score << "\n";

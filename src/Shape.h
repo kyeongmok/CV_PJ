@@ -51,7 +51,7 @@ public:
 	LBF_POINT GetVariance();
 
 	void DrawShape(cv::Mat& srcImg, cv::Scalar color);
-	Shape RegularizeShape(Bbox refBbox);
+	Shape RegularizeShape(Bbox refBbox, float scale = 1.0);
 	Shape ScaleShape(LBF_DATA scale);
 	Shape FlipShape();
 	Shape ResetShape(Bbox gtBbox);
