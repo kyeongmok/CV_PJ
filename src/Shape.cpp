@@ -276,7 +276,7 @@ Shape Shape::RegularizeShape(Bbox refBbox, float scale)
 		tmpPoint -= minPoint;
 		tmpPoint.x /= (maxPoint - minPoint).x;
 		tmpPoint.y /= (maxPoint - minPoint).y;
-		dstShape.data()[i] = tmpPoint * 1000;
+		dstShape.data()[i] = tmpPoint * scale;
 	}
 
 	return dstShape;
