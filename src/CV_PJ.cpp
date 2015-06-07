@@ -176,9 +176,21 @@ public:
 			
 			/* face alignment */
 			cv::Mat curGrayImg = cv::imread(imgPathList[i].c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+			
+//			cv::resize(curGrayImg, curGrayImg, cv::Size(640, 480));
+
 			cv::Rect detectedFace;
 			std::vector<cv::Point2d> lmarks, lmarksRegularized;
 			CV_PJ_Detect(curGrayImg, detectedFace, lmarks, lmarksRegularized, 1.0);
+
+			//tmp drawing
+// 			for (int i = 0; i < lmarks.size(); i++)
+// 			{
+// 				cv::circle(curGrayImg, lmarks[i], 2, cv::Scalar(0, 0, 255), -1);
+// 			}
+// 			cv::imshow("test", curGrayImg);
+// 			cv::waitKey();
+
 
 			if (lmarksRegularized.size() != inputNumFeatures / 2)
 			{
@@ -285,24 +297,24 @@ int main()
 	cFace.CV_PJ_LoadModel();
 	
 	//cFace.TrainScoreModel();
+	cFace.LoadScoreModel();
 
-	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized, 1000);
+	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized, 1.0f);
 	double score = cFace.CV_PJ_Scoring(detectedLandmarks); 
 	double score2 = cFace.CV_PJ_Scoring2(detectedLandmarks); 
 	double score3 = cFace.PredictScore(detectedRegularized);
 	std::cout << "face score = " << score << "\n";
 	std::cout << "face score2 = " << score2 << "\n";
-	std::cout << "learned score = " << score3 << "\n";
+	std::cout << "predicted score = " << score3 << "\n";
 	for (int i = 0; i < detectedLandmarks.size(); i++)
 	{
 		cv::circle(testImg, detectedLandmarks[i], 2, cv::Scalar(0, 0, 255), -1);
     //cv::putText(testImg, std::to_string(i), detectedLandmarks[i], 1, 1, cv::Scalar(0,0,255));
 	}
 	std::string outputPath = fileDirPath + "//" + fileName;
-	//cv::imwrite(outputPath, testImg);
+	cv::imshow("test", testImg);
 	cv::waitKey();
-
-	system("pause");
-
+	//cv::imwrite(outputPath, testImg);
+	
 	return 0;
 }
