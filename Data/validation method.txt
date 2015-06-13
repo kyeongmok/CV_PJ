@@ -1,0 +1,7 @@
+Validation method : (Leave-one-out) cross-validation
+ - 적은 데이터셋으로도 통계적 신뢰도를 높이기 위해 cross-validation 방식을 사용
+ - 일반적인 k-fold cross validation 방법은, 데이터셋의 양이 충분치 않고 검증하기 위한 시간이 충분치 않기 때문에(k-fold의 경우 검증하기 위해 학습해야 하는 횟수가 너무 큼) 적절하지 않음
+ - leave-one-out cross-validation 방식으로 검증
+
+ - 전체 dataset : 시카고 데이터셋 얼굴 이미지 153장
+ - 결과 average error : 

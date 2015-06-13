@@ -10,6 +10,8 @@
 class CV_PJ_Face
 {
 public:
+	inline void GetImglistVector(std::vector<std::string>& trainImgPathList){ trainImgPathList = m_TrainImgPathList; }
+
 	CV_PJ_Face(std::string _dataDirPath)
 	{
 		m_DataDirPath = _dataDirPath;
@@ -117,11 +119,10 @@ public:
     return score;
   }
 
-	void TrainScoreModel()
+	void ReadTrainList()
 	{
 		/* train set load */
 		std::string imgPathListFile = m_DataDirPath + "//scoreDataset//Path_Trainset.txt";
-		std::vector<std::string> imgPathList;
 		std::ifstream inFile;
 		inFile.open(imgPathListFile.c_str());
 		if (inFile.is_open())
@@ -131,7 +132,7 @@ public:
 				std::string tmpStr;
 				std::getline(inFile, tmpStr);
 				if (tmpStr != "")
-					imgPathList.push_back(tmpStr);
+					m_TrainImgPathList.push_back(tmpStr);
 			}
 			inFile.close();
 		}
@@ -140,10 +141,13 @@ public:
 			std::cerr << "fail : load image path list file" << std::endl;
 			return;
 		}
+	}
 
+	void TrainScoreModel(bool willSave)
+	{
 		/* get train matrix */
 		int numSamples, inputNumFeatures, targetNumFeatures;
-		numSamples = imgPathList.size();
+		numSamples = m_TrainImgPathList.size();
 		inputNumFeatures = 68 * 2;	// # of lmarks(x and y coord)
 		targetNumFeatures = 1;	// # of output score
 		double *pInputMatrix, *pTargetMatrix, *pRegressionResult;
@@ -151,10 +155,12 @@ public:
 		pTargetMatrix = new double[numSamples * targetNumFeatures];
 		pRegressionResult = new double[inputNumFeatures * targetNumFeatures];
 
+		assert(numSamples != 0);
+
 		for (int i = 0; i < numSamples; i++)
 		{
 			/* parsing to get the score vector */
-			std::string curImgPath = imgPathList[i];
+			std::string curImgPath = m_TrainImgPathList[i];
 			std::string::size_type pos = 0;
 			int startPos, endPos;
 			startPos = endPos = 0;
@@ -175,7 +181,7 @@ public:
 			double curScore = std::stod(scoreStr);
 			
 			/* face alignment */
-			cv::Mat curGrayImg = cv::imread(imgPathList[i].c_str(), CV_LOAD_IMAGE_GRAYSCALE);
+			cv::Mat curGrayImg = cv::imread(m_TrainImgPathList[i].c_str(), CV_LOAD_IMAGE_GRAYSCALE);
 			
 //			cv::resize(curGrayImg, curGrayImg, cv::Size(640, 480));
 
@@ -211,10 +217,18 @@ public:
 		cv::Mat scoreModel = cv::Mat(inputNumFeatures, targetNumFeatures, CV_64F, pRegressionResult);
 
 		/* Save Model */
-		std::string modelPath = m_DataDirPath + "\\ScoreModel.xml";
-		cv::FileStorage fs(modelPath, cv::FileStorage::WRITE);
-		fs << "ScoreModel" << scoreModel;
-		fs.release();
+		if (willSave)
+		{
+			std::string modelPath = m_DataDirPath + "\\ScoreModel.xml";
+			cv::FileStorage fs(modelPath, cv::FileStorage::WRITE);
+			fs << "ScoreModel" << scoreModel;
+			fs.release();
+		}
+		else
+		{
+			m_ScoreModel.release();
+			m_ScoreModel = scoreModel.clone();
+		}
 
 		delete[] pInputMatrix;
 		delete[] pTargetMatrix;
@@ -252,6 +266,7 @@ private:
 	cv::CascadeClassifier m_FaceDetector;
 	std::string m_DataDirPath;
 	cv::Mat m_ScoreModel;
+	std::vector<std::string> m_TrainImgPathList;
 
 	cv::Point2d getCenterPoint(cv::Point2d pt1, cv::Point2d pt2) 
   {
@@ -265,56 +280,133 @@ private:
   }
 };
 
-int main()
-//int main(int argc, char **argv)
+void CrossValidation()
 {
-  cv::Mat testImg;
-  std::string dataDirPath, fileDirPath, fileName;
-// 	if (argc > 1) {
-// 		dataDirPath = argv[1];
-// 		fileDirPath = argv[2];
-// 		fileName = argv[3];
-//   } else {
-// 		dataDirPath = "..//Data";
-// 		fileDirPath = "..//Data";
-// 		fileName = "image_0030.png";
-//   }
+	//Leave-one-out Cross-Validation
+	std::string dataDirPath;
 	dataDirPath = "..//..//Data";
-	fileDirPath = "..//..//Data";
-	fileName = "image_0030.png";
-
-	testImg = cv::imread(fileDirPath + "//" + fileName);
-
-	if(testImg.empty())
-	{
-		std::cout << "image load failed" << "\n";
-		return -1;
-	}
 
 	CV_PJ_Face cFace(dataDirPath);
 	cv::Rect detectedFace;
 	std::vector<cv::Point2d> detectedLandmarks, detectedRegularized;
 	cFace.CV_PJ_LoadModel();
-	
-	//cFace.TrainScoreModel();
-	cFace.LoadScoreModel();
 
-	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized, 1.0f);
-	double score = cFace.CV_PJ_Scoring(detectedLandmarks); 
-	double score2 = cFace.CV_PJ_Scoring2(detectedLandmarks); 
-	double score3 = cFace.PredictScore(detectedRegularized);
-	std::cout << "face score = " << score << "\n";
-	std::cout << "face score2 = " << score2 << "\n";
-	std::cout << "predicted score = " << score3 << "\n";
-	for (int i = 0; i < detectedLandmarks.size(); i++)
+	cFace.ReadTrainList();
+	std::vector<std::string> imgPathList;
+	cFace.GetImglistVector(imgPathList);
+	int numSample = imgPathList.size();
+	assert(numSample != 0);
+
+	std::ofstream outStream;
+	std::string resultdataPath = "..//..//Data//crossval_resultData.txt";
+	outStream.open(resultdataPath);
+	if (!outStream.is_open())
+		return;
+
+	double avgError = 0;
+	for (int i = 0; i < numSample; i++)
 	{
-		cv::circle(testImg, detectedLandmarks[i], 2, cv::Scalar(0, 0, 255), -1);
-    //cv::putText(testImg, std::to_string(i), detectedLandmarks[i], 1, 1, cv::Scalar(0,0,255));
+		std::cout << "Train " << i << " of " << numSample << " case\n";
+		std::string curTestImgPath = imgPathList[0];
+		imgPathList.erase(imgPathList.begin());
+		cFace.TrainScoreModel(false);
+
+		/* parsing to get the score */
+		std::string::size_type pos = 0;
+		int startPos, endPos;
+		startPos = endPos = 0;
+		std::string startFind = "\\";
+		std::string endFind = "_";
+		while ((pos = curTestImgPath.find(startFind, pos)) != std::string::npos)
+		{
+			pos += startFind.size();
+			startPos = pos;
+		}
+		pos = 0;
+		while ((pos = curTestImgPath.find(endFind, pos)) != std::string::npos)
+		{
+			pos += endFind.size();
+			endPos = pos;
+		}
+		std::string scoreStr = curTestImgPath.substr(startPos, endPos - startPos - 1);
+		double groundTruthScore = std::stod(scoreStr);
+
+		/* predict using the learned model */
+		cv::Mat curTestImg = cv::imread(curTestImgPath.c_str());
+		cFace.CV_PJ_Detect(curTestImg, detectedFace, detectedLandmarks, detectedRegularized, 1.0f);
+		double predictedScore = cFace.PredictScore(detectedRegularized);
+
+		/* calculate the error */
+		double curError = std::abs(predictedScore - groundTruthScore);
+		avgError += curError;
+		std::cout << "curError : " << curError << "\n";
+
+		/* save error data */
+		outStream << curError << "\n";
+
+		/* get back to the original vector */
+		imgPathList.push_back(curTestImgPath);
 	}
-	std::string outputPath = fileDirPath + "//" + fileName;
-	cv::imshow("test", testImg);
-	cv::waitKey();
-	//cv::imwrite(outputPath, testImg);
+	avgError /= numSample;
+	outStream << "Avg Error : " << avgError << "\n";
+	outStream.close();
+
+	std::cout << "leave-one-out cross-validation result\n average error : " << avgError << "\n";
+}
+
+int main()
+//int main(int argc, char **argv)
+{
+//   cv::Mat testImg;
+//   std::string dataDirPath, fileDirPath, fileName;
+// // 	if (argc > 1) {
+// // 		dataDirPath = argv[1];
+// // 		fileDirPath = argv[2];
+// // 		fileName = argv[3];
+// //   } else {
+// // 		dataDirPath = "..//Data";
+// // 		fileDirPath = "..//Data";
+// // 		fileName = "image_0030.png";
+// //   }
+// 	dataDirPath = "..//..//Data";
+// 	fileDirPath = "..//..//Data";
+// 	fileName = "image_0030.png";
+// 
+// 	testImg = cv::imread(fileDirPath + "//" + fileName);
+// 
+// 	if(testImg.empty())
+// 	{
+// 		std::cout << "image load failed" << "\n";
+// 		return -1;
+// 	}
+// 
+// 	CV_PJ_Face cFace(dataDirPath);
+// 	cv::Rect detectedFace;
+// 	std::vector<cv::Point2d> detectedLandmarks, detectedRegularized;
+// 	cFace.CV_PJ_LoadModel();
+// 	
+// 	//cFace.ReadTrainList();
+// 	//cFace.TrainScoreModel(true);
+// 	cFace.LoadScoreModel();
+// 
+// 	cFace.CV_PJ_Detect(testImg, detectedFace, detectedLandmarks, detectedRegularized, 1.0f);
+// 	double score = cFace.CV_PJ_Scoring(detectedLandmarks); 
+// 	double score2 = cFace.CV_PJ_Scoring2(detectedLandmarks); 
+// 	double score3 = cFace.PredictScore(detectedRegularized);
+// 	std::cout << "face score = " << score << "\n";
+// 	std::cout << "face score2 = " << score2 << "\n";
+// 	std::cout << "predicted score = " << score3 << "\n";
+// 	for (int i = 0; i < detectedLandmarks.size(); i++)
+// 	{
+// 		cv::circle(testImg, detectedLandmarks[i], 2, cv::Scalar(0, 0, 255), -1);
+//     //cv::putText(testImg, std::to_string(i), detectedLandmarks[i], 1, 1, cv::Scalar(0,0,255));
+// 	}
+// 	std::string outputPath = fileDirPath + "//" + fileName;
+// 	cv::imshow("test", testImg);
+// 	cv::waitKey();
+// 	//cv::imwrite(outputPath, testImg);
 	
+	CrossValidation();
+	cv::waitKey();
 	return 0;
 }
